@@ -27,7 +27,10 @@ _clean_beginning_replace = ''
 _clean_end_pattern = '\\s*$'
 _clean_end_replace = ''
 
-_capture_phonetic_and_pos_pattern = '\\[.*?\\](,? *\\S*?\\. )?'
+# About this regex: remove characters inside brackets.
+# Sometimes there is an additional set of characters with a final close bracket (but no opening...weird).
+# Finally, remove the part of speech, which follows the brackets and is a single token ending in a period.
+_capture_phonetic_and_pos_pattern = '\\[.*?\\](.*?\\])?(,? *\\S*?\\.,? )?'
 _capture_phonetic_and_pos_replace = ''
 
 # Saved configurations. Add to this dict to enable simple command-line usage.
