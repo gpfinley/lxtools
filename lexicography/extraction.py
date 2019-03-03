@@ -2,25 +2,51 @@ import csv
 import re
 import fire
 from typing import List, Tuple, Iterable
+from configurations import Config, parameters
 
 
-def read_and_write(in_file, out_file, headword_pattern, groupnum, encoding):
+def read_and_write(in_file, out_file, language=None, **kwargs):
     """
     De facto main method: create a CSV from a specially formatted file.
     :param in_file:
     :param out_file:
-    :param headword_pattern:
-    :param encoding:
+    :param language:
+    :param kwargs:
     :return:
     """
-    write_csv(out_file, read_file(in_file, headword_pattern, groupnum, encoding))
+    if language is not None:
+        params = parameters[language]
+    else:
+        params = Config()
+    for k, v in kwargs.items():
+        setattr(params, k, v)
+    tuples = read_file(in_file, params.headword_pattern, params.headword_group, params.encoding)
+    processed_tuples = postprocess(tuples, params.entry_postproc_patterns, params.entry_postproc_replacements)
+    write_csv(out_file, processed_tuples)
+
+
+def postprocess(headword_entry_list: Iterable[Tuple[str, str]],
+                patterns: Iterable[str],
+                replacements: Iterable[str]) -> List[Tuple[str, str]]:
+    """
+    Perform regex replacements on an extracted dictionary.
+    :param headword_entry_list:
+    :param patterns:
+    :param replacements:
+    :return:
+    """
+    compiled_patterns = [re.compile(pattern) for pattern in patterns]
+    def do_replacements(string):
+        for pattern, repl in zip(compiled_patterns, replacements):
+            string = pattern.sub(repl, string)
+        return string
+    return [(h, do_replacements(e)) for h, e in headword_entry_list]
 
 
 def read_file(in_path: str,
               headword_pattern: str,
               groupnum: int,
-              encoding: str='utf-8',
-              newline_to_space=True) -> List[Tuple[str, str]]:
+              encoding: str='utf-8') -> List[Tuple[str, str]]:
     """
     Read a text file and
     Any lines not containing the headword end tag are considered part of the entry.
@@ -44,8 +70,6 @@ def read_file(in_path: str,
         last_headword = text_file[headword_start_index:headword_end_index]
         last_headword_end = headword_end_index
     entries.append((last_headword, text_file[last_headword_end:]))
-    if newline_to_space:
-        entries = [(headword, entry.replace('\n', ' ')) for headword, entry in entries]
     return entries
 
 
